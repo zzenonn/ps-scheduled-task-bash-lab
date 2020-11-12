@@ -4,7 +4,7 @@ provider "aws" {
 }
 
 module "network" {
-    source          = "../../modules/infrastructure/network"
+    source          = "./modules/infrastructure/network"
     project_name    = var.project_name
     environment     = var.environment
     db_port         = var.db_port
@@ -12,7 +12,10 @@ module "network" {
 }
 
 module "instances" {
-    source  = "../../modules/infrastructure/instances"
+    source  = "./modules/infrastructure/instances"
+    db_engine       = var.db_engine
+    db_version      = var.db_version
+    db_user         = var.db_user
     project_name    = module.network.project_name
     environment     = module.network.environment
     db_port         = module.network.db_port

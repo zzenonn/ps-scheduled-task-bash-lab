@@ -26,6 +26,27 @@ resource "aws_security_group" "bastion" {
   }
 }
 
+resource "aws_security_group" "dms" {
+  name        = "${local.name_tag_prefix}-RepInstance-Sg"
+  description = "Security group for replication instance"
+  vpc_id      = var.vpc
+  
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = -1
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow to anywhere from this replication instance."
+  }
+
+  tags = {
+    Name    = "${local.name_tag_prefix}-RepInstance-Sg"
+    Env     = var.environment
+    Project = var.project_name
+  }
+}
+
+
 resource "aws_security_group" "db" {
   name        = "${local.name_tag_prefix}-Db-Sg"
   description = "Security group for db instance"
@@ -38,7 +59,24 @@ resource "aws_security_group" "db" {
     security_groups = [aws_security_group.bastion.id]
     description     = "Allow from bastion to this db"
   }
-  egress = []
+  
+  ingress {
+    from_port       = var.db_port
+    to_port         = var.db_port
+    protocol        = 6
+    security_groups = [aws_security_group.dms.id]
+    description     = "Allow from dms to this db"
+  }
+  
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = -1
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow to anywhere from this replication instance."
+  }
+  
+  # egress = []
 
   tags = {
     Name    = "${local.name_tag_prefix}-Db-Sg"
@@ -46,6 +84,7 @@ resource "aws_security_group" "db" {
     Project = var.project_name
   }
 }
+
 
 resource "aws_iam_role" "ssm_role" {
   name_prefix = "${var.project_name}${var.environment}"
@@ -117,8 +156,10 @@ resource "aws_instance" "bastion" {
   security_groups      = [aws_security_group.bastion.id]
   user_data            = <<-EOF
     #!/bin/bash
-    amazon-linux-extras install postgresql11 vim epel -y
-    yum install -y postgresql-server postgresql-devel
+    curl http://repo.mysql.com/yum/mysql-5.5-community/el/7/x86_64/mysql-community-release-el7-5.noarch.rpm > /tmp/mysql-community-release-el7-5.noarch.rpm
+    yum update -y
+    yum install -y /tmp/mysql-community-release-el7-5.noarch.rpm
+    yum install -y mysql-community-client
     EOF
   tags = {
     Name    = "${local.name_tag_prefix}-BastionInstance"
@@ -127,6 +168,33 @@ resource "aws_instance" "bastion" {
   }
 } 
 
+resource "aws_instance" "src_db" {
+  ami                  = data.aws_ssm_parameter.amazon_linux_ami.value
+  subnet_id            = var.private_subnets[0]
+  instance_type        = "t3.micro"
+  iam_instance_profile = aws_iam_instance_profile.bastion_profile.name
+  security_groups      = [aws_security_group.db.id]
+  user_data            = <<-EOF
+    #!/bin/bash
+    curl http://repo.mysql.com/yum/mysql-5.5-community/el/7/x86_64/mysql-community-release-el7-5.noarch.rpm > /tmp/mysql-community-release-el7-5.noarch.rpm
+    yum update -y
+    yum install -y /tmp/mysql-community-release-el7-5.noarch.rpm
+    yum install -y mysql-community-server
+    systemctl enable mysqld
+    systemctl start mysqld
+    mysqladmin -u root password 'Password1'
+    mysql -u root -pPassword1 -e "CREATE DATABASE pitchfork"
+    aws s3 cp --no-sign-request s3://zenon-saavedra/tmp/pitchfork.sql /tmp/pitchfork.sql
+    aws s3 cp --no-sign-request s3://zenon-saavedra/tmp/user_perm.sql /tmp/user_perm.sql
+    mysql -u root -pPassword1 pitchfork < /tmp/pitchfork.sql
+    mysql -u root -pPassword1 < /tmp/user_perm.sql
+    EOF
+  tags = {
+    Name    = "${local.name_tag_prefix}-SourceDb"
+    Env     = var.environment
+    Project = var.project_name
+  }
+} 
 
 resource "aws_db_instance" "db" {
   allocated_storage       = var.environment == "Prod" ? 100  : 20
@@ -139,9 +207,10 @@ resource "aws_db_instance" "db" {
   skip_final_snapshot     = var.environment == "Prod" ? false : true
   identifier              = lower("${local.name_tag_prefix}-Db")
   engine                  = var.db_engine
+  engine_version          = var.db_version
   name                    = lower("${var.project_name}${var.environment}Db")
   username                = var.db_user
-  password                = data.aws_ssm_parameter.db_password.value
+  password                = "Password1"
   db_subnet_group_name    = var.db_subnet_group
   vpc_security_group_ids  = [aws_security_group.db.id]
   storage_encrypted       = true

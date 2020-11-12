@@ -46,6 +46,12 @@ variable "db_engine" {
   description = "DB engine being used"
 }
 
+variable "db_version" {
+  type        = string
+  default     = "12.4"
+  description = "DB engine being used"
+}
+
 variable "db_user" {
   type        = string
   default     = "dbsuper"
@@ -54,10 +60,6 @@ variable "db_user" {
 
 data "aws_ssm_parameter" "amazon_linux_ami" {
   name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
-}
-
-data "aws_ssm_parameter" "db_password" {
-  name = "dbPassword"
 }
 
 locals {

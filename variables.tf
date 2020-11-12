@@ -10,6 +10,24 @@ variable "environment" {
   description = "Environment name for tagging purposes"
 }
 
+variable "db_user" {
+  type        = string
+  default     = "dbsuper"
+  description = "Superuser username"
+}
+
+variable "db_engine" {
+  type        = string
+  default     = "postgres"
+  description = "DB engine being used"
+}
+
+variable "db_version" {
+  type        = string
+  default     = "12.4"
+  description = "DB engine being used"
+}
+
 variable "db_port" {
   type        = number
   default     = 5432
