@@ -179,15 +179,14 @@ resource "aws_instance" "src_db" {
     curl http://repo.mysql.com/yum/mysql-5.5-community/el/7/x86_64/mysql-community-release-el7-5.noarch.rpm > /tmp/mysql-community-release-el7-5.noarch.rpm
     yum update -y
     yum install -y /tmp/mysql-community-release-el7-5.noarch.rpm
-    yum install -y mysql-community-server
+    yum install -y mysql-community-server git
     systemctl enable mysqld
     systemctl start mysqld
     mysqladmin -u root password 'Password1'
     mysql -u root -pPassword1 -e "CREATE DATABASE pitchfork"
-    aws s3 cp --no-sign-request s3://zenon-saavedra/tmp/pitchfork.sql /tmp/pitchfork.sql
-    aws s3 cp --no-sign-request s3://zenon-saavedra/tmp/user_perm.sql /tmp/user_perm.sql
-    mysql -u root -pPassword1 pitchfork < /tmp/pitchfork.sql
-    mysql -u root -pPassword1 < /tmp/user_perm.sql
+    git clone https://github.com/ps-interactive/lab_aws_implement-data-ingestion-solution-using-aws-database-migration-aws.git
+    mysql -u root -pPassword1 pitchfork < /lab_aws_implement-data-ingestion-solution-using-aws-database-migration-aws.git/pitchfork.sql
+    mysql -u root -pPassword1 < /lab_aws_implement-data-ingestion-solution-using-aws-database-migration-aws.git/user_perm.sql
     EOF
   tags = {
     Name    = "${local.name_tag_prefix}-SourceDb"

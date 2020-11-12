@@ -1,6 +1,6 @@
 provider "aws" {
-  profile = "terraform"
-  region  = "ap-southeast-1"
+  version = "~> 2.0"
+  region  = "us-west-2"
 }
 
 module "network" {
