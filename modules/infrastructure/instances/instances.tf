@@ -185,8 +185,8 @@ resource "aws_instance" "src_db" {
     mysqladmin -u root password 'Password1'
     mysql -u root -pPassword1 -e "CREATE DATABASE pitchfork"
     git clone https://github.com/ps-interactive/lab_aws_implement-data-ingestion-solution-using-aws-database-migration-aws.git
-    mysql -u root -pPassword1 pitchfork < /lab_aws_implement-data-ingestion-solution-using-aws-database-migration-aws.git/pitchfork.sql
-    mysql -u root -pPassword1 < /lab_aws_implement-data-ingestion-solution-using-aws-database-migration-aws.git/user_perm.sql
+    mysql -u root -pPassword1 pitchfork < /lab_aws_implement-data-ingestion-solution-using-aws-database-migration-aws/pitchfork.sql
+    mysql -u root -pPassword1 < /lab_aws_implement-data-ingestion-solution-using-aws-database-migration-aws/user_perm.sql
     EOF
   tags = {
     Name    = "${local.name_tag_prefix}-SourceDb"
