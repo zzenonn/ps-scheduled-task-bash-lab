@@ -156,9 +156,9 @@ resource "aws_instance" "bastion" {
   security_groups      = [aws_security_group.bastion.id]
   user_data            = <<-EOF
     #!/bin/bash
-    curl http://repo.mysql.com/yum/mysql-5.5-community/el/7/x86_64/mysql-community-release-el7-5.noarch.rpm > /tmp/mysql-community-release-el7-5.noarch.rpm
+    curl --max-time 20 --retry 5 http://repo.mysql.com/yum/mysql-5.5-community/el/7/x86_64/mysql-community-release-el7-5.noarch.rpm > /mysql-community-release-el7-5.noarch.rpm
     yum update -y
-    yum install -y /tmp/mysql-community-release-el7-5.noarch.rpm
+    yum install -y /mysql-community-release-el7-5.noarch.rpm
     yum install -y mysql-community-client
     EOF
   tags = {
@@ -176,9 +176,9 @@ resource "aws_instance" "src_db" {
   security_groups      = [aws_security_group.db.id]
   user_data            = <<-EOF
     #!/bin/bash
-    curl http://repo.mysql.com/yum/mysql-5.5-community/el/7/x86_64/mysql-community-release-el7-5.noarch.rpm > /tmp/mysql-community-release-el7-5.noarch.rpm
+    curl --max-time 20 --retry 5 http://repo.mysql.com/yum/mysql-5.5-community/el/7/x86_64/mysql-community-release-el7-5.noarch.rpm > /mysql-community-release-el7-5.noarch.rpm
     yum update -y
-    yum install -y /tmp/mysql-community-release-el7-5.noarch.rpm
+    yum install -y /mysql-community-release-el7-5.noarch.rpm
     yum install -y mysql-community-server git
     systemctl enable mysqld
     systemctl start mysqld
