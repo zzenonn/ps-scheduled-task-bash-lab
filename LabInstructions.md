@@ -14,6 +14,7 @@ Globomantics makes use of an open source tool called *lynis* to check their syst
 
 1. Run `cd /usr/local/lynis` to enter the program directory.
 2. Run `sudo ./lynis audit system`
+
 You should see an lynis begin the scan and output files, scan results, and suggestions on how to harden and secure your environment.
 
 ## Schedule the Scans
