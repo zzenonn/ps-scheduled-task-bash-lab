@@ -47,45 +47,6 @@ resource "aws_security_group" "dms" {
 }
 
 
-resource "aws_security_group" "db" {
-  name        = "${local.name_tag_prefix}-Db-Sg"
-  description = "Security group for db instance"
-  vpc_id      = var.vpc
-
-  ingress {
-    from_port       = var.db_port
-    to_port         = var.db_port
-    protocol        = 6
-    security_groups = [aws_security_group.bastion.id]
-    description     = "Allow from bastion to this db"
-  }
-  
-  ingress {
-    from_port       = var.db_port
-    to_port         = var.db_port
-    protocol        = 6
-    security_groups = [aws_security_group.dms.id]
-    description     = "Allow from dms to this db"
-  }
-  
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = -1
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow to anywhere from this replication instance."
-  }
-  
-  # egress = []
-
-  tags = {
-    Name    = "${local.name_tag_prefix}-Db-Sg"
-    Env     = var.environment
-    Project = var.project_name
-  }
-}
-
-
 resource "aws_iam_role" "ssm_role" {
   name_prefix = "${var.project_name}${var.environment}"
   path        = "/${var.project_name}/${var.environment}/"
@@ -110,6 +71,11 @@ EOF
     Env     = var.environment
     Project = var.project_name
   }
+}
+
+resource "aws_iam_role_policy_attachment" "AmazonS3FullAccess" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+  role       = aws_iam_role.ssm_role.id
 }
 
 resource "aws_iam_role_policy" "ssm_policy" {
@@ -156,10 +122,12 @@ resource "aws_instance" "bastion" {
   security_groups      = [aws_security_group.bastion.id]
   user_data            = <<-EOF
     #!/bin/bash
-    curl --max-time 20 --retry 5 http://repo.mysql.com/yum/mysql-5.5-community/el/7/x86_64/mysql-community-release-el7-5.noarch.rpm > /mysql-community-release-el7-5.noarch.rpm
-    yum update -y
-    yum install -y /mysql-community-release-el7-5.noarch.rpm
-    yum install -y mysql-community-client
+    curl --max-time 20 --retry 5 http://repo.mysql.com/yum/mysql-5.5-community/el/7/x86_64/mysql-community-release-el7-5.noarch.rpm
+    apt update -y
+    apt upgrade -y
+    apt install git vim -y
+    cd /usr/local
+    git clone https://github.com/CISOfy/lynis
     EOF
   tags = {
     Name    = "${local.name_tag_prefix}-BastionInstance"
@@ -167,51 +135,3 @@ resource "aws_instance" "bastion" {
     Project = var.project_name
   }
 } 
-
-resource "aws_instance" "src_db" {
-  ami                  = data.aws_ssm_parameter.amazon_linux_ami.value
-  subnet_id            = var.private_subnets[0]
-  instance_type        = "t3.micro"
-  iam_instance_profile = aws_iam_instance_profile.bastion_profile.name
-  security_groups      = [aws_security_group.db.id]
-  user_data            = <<-EOF
-    #!/bin/bash
-    curl --max-time 20 --retry 5 http://repo.mysql.com/yum/mysql-5.5-community/el/7/x86_64/mysql-community-release-el7-5.noarch.rpm > /mysql-community-release-el7-5.noarch.rpm
-    yum update -y
-    yum install -y /mysql-community-release-el7-5.noarch.rpm
-    yum install -y mysql-community-server git
-    systemctl enable mysqld
-    systemctl start mysqld
-    mysqladmin -u root password 'Password1'
-    mysql -u root -pPassword1 -e "CREATE DATABASE pitchfork"
-    git clone https://github.com/ps-interactive/lab_aws_implement-data-ingestion-solution-using-aws-database-migration-aws.git
-    mysql -u root -pPassword1 pitchfork < /lab_aws_implement-data-ingestion-solution-using-aws-database-migration-aws/pitchfork.sql
-    mysql -u root -pPassword1 < /lab_aws_implement-data-ingestion-solution-using-aws-database-migration-aws/user_perm.sql
-    EOF
-  tags = {
-    Name    = "${local.name_tag_prefix}-SourceDb"
-    Env     = var.environment
-    Project = var.project_name
-  }
-} 
-
-resource "aws_db_instance" "db" {
-  allocated_storage       = var.environment == "Prod" ? 100  : 20
-  max_allocated_storage   = var.environment == "Prod" ? 500  : 30
-  backup_retention_period = var.environment == "Prod" ? 30  : 3
-  storage_type            = var.environment == "Prod" ? "io1" : "gp2"
-  iops                    = var.environment == "Prod" ? 10000 : 0
-  instance_class          = var.environment == "Prod" ? "db.t3.large" : "db.t3.micro"
-  multi_az                = var.environment == "Prod" ? true : false
-  skip_final_snapshot     = var.environment == "Prod" ? false : true
-  identifier              = lower("${local.name_tag_prefix}-Db")
-  engine                  = var.db_engine
-  engine_version          = var.db_version
-  name                    = lower("${var.project_name}${var.environment}Db")
-  username                = var.db_user
-  password                = "Password1"
-  db_subnet_group_name    = var.db_subnet_group
-  vpc_security_group_ids  = [aws_security_group.db.id]
-  storage_encrypted       = true
-  
-}

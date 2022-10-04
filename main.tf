@@ -13,15 +13,37 @@ module "network" {
 
 module "instances" {
     source  = "./modules/infrastructure/instances"
-    db_engine       = var.db_engine
-    db_version      = var.db_version
-    db_user         = var.db_user
     project_name    = module.network.project_name
     environment     = module.network.environment
-    db_port         = module.network.db_port
     vpc             = module.network.vpc
     private_subnets = module.network.private_subnets
     public_subnets  = module.network.public_subnets
     db_subnets      = module.network.db_subnets
-    db_subnet_group = module.network.db_subnet_group
+}
+
+resource "aws_s3_bucket" "output" {
+}
+
+resource "aws_s3_bucket_policy" "public_access" {
+  bucket = aws_s3_bucket.output.id
+  policy = data.aws_iam_policy_document.public_access.json
+}
+
+data "aws_iam_policy_document" "public_access" {
+  statement {
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+
+    resources = [
+      aws_s3_bucket.output.arn,
+      "${aws_s3_bucket.output.arn}/*",
+    ]
+  }
 }

@@ -10,11 +10,6 @@ variable "environment" {
   description = "Environment name for tagging purposes"
 }
 
-variable "db_port" {
-  type        = number
-  description = "Comes from networking template"
-}
-
 variable "vpc" {
   type        = string
   description = "Comes from networking template"
@@ -35,31 +30,8 @@ variable "db_subnets" {
   description = "Comes from networking template"
 }
 
-variable "db_subnet_group" {
-  type        = string
-  description = "Comes from networking template"
-}
-
-variable "db_engine" {
-  type        = string
-  default     = "postgres"
-  description = "DB engine being used"
-}
-
-variable "db_version" {
-  type        = string
-  default     = "12.4"
-  description = "DB engine being used"
-}
-
-variable "db_user" {
-  type        = string
-  default     = "dbsuper"
-  description = "Superuser username"
-}
-
 data "aws_ssm_parameter" "amazon_linux_ami" {
-  name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+  name = "/aws/service/canonical/ubuntu/server-minimal/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id"
 }
 
 locals {
